@@ -111,38 +111,62 @@ process OBTAIN_PIPELINE_METADATA {
 }
 
 // EDIT HERE
-process process1 {
+process BCFTOOLS_VIEW {
     label "process_large"
-    label "process1"
+    label "bcftools"
     echo true
-    publishDir "${params.outdir}", mode: "copy"
 
     input:
-    // Define your input files e.g. path(input_paths_file)
+    path(vcf_paths_file)
+    path(index_file)
 
 
     output:
-    // Define your Output files and variables e.g. tuple val(params.add1), path("*.txt")
+    path "filtered.vcf.gz", emit: filtered_vcf
+    path "*.tbi", emit: new_index
    
 
     script:
     """
     // Write your script of commands here
     echo "[INFO] Running the process!"
-    // ------------------------------------------
-    // e.g. bcftools view \
-    //    -Oz --output ${output.vcf.gz} \
-    //    --regions chr1 \
-    //    --threads ${params.large_cpus} \
-    //    $vcf_paths_file
-    echo "[INFO] Completed process1"
-    // ------------------------------------------
+    bcftools view \
+        -Oz --output filtered.vcf.gz \
+        --regions $params.genomic_region \
+        --threads ${params.large_cpus} \
+        $vcf_paths_file \
+        $params.bcftools_view_options
+    echo "[INFO] Running the bcftools index command"
+    bcftools index -t filtered.vcf.gz
     """
 }
+
+process CONVERT_VCF {
+    label "process_large"
+    label "plink2"
+    echo true
+    publishDir "${params.outdir}", mode: "copy"
+
+    input:
+    path filtered_vcf
+
+    output:
+    tuple path("*.bgen"), path("*.sample"), path("*.log")
+
+    script:
+    """
+    echo "[INFO] Running the plink2 command!"
+    plink2 --vcf $filtered_vcf \
+--make-bed \
+--out cohort_filtered \
+-max-alleles 2 \
+--export bgen-1.3
+    """
+    }
 // TOO HERE
 
 // EDIT workflow name
-workflow process1 {
+workflow BCFTOOLS {
 
     main:
 
@@ -186,6 +210,7 @@ workflow process1 {
     // Edit channels, for multiple conditional channels use if and else statements
     // EDIT HERE
     ch_input_file = Channel.fromPath("${params.input}")
+   ch_index_file = Channel.fromPath("${params.input_index}")
     // TOO HERE
     
 
@@ -217,13 +242,15 @@ workflow process1 {
     
 // Run process1 with our input channel parameter
  // EDIT HERE
-        process1(ch_input_file)
+        BCFTOOLS_VIEW(ch_input_file,ch_index_file)
+        CONVERT_VCF(BCFTOOLS_VIEW.out.filtered_vcf)
+
 
 }
 
 workflow {
 
-   process1()
+   BCFTOOLS()
 
 }
  // TOO HERE
