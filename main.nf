@@ -135,7 +135,6 @@ process BCFTOOLS_VIEW {
         --regions $params.genomic_region \
         --threads ${params.large_cpus} \
         $vcf_paths_file \
-        $params.bcftools_view_options
     echo "[INFO] Running the bcftools index command"
     bcftools index -t filtered.vcf.gz
     """
