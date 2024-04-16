@@ -128,7 +128,6 @@ process BCFTOOLS_VIEW {
 
     script:
     """
-    // Write your script of commands here
     echo "[INFO] Running the process!"
     bcftools view \
         -Oz --output filtered.vcf.gz \
